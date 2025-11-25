@@ -116,6 +116,17 @@ class HttpAdapter:
             conn.close()
             return
 
+        if req.method == "GET" and req.path == "/index.html":
+            auth_cookie = req.cookies.get("auth", "")
+        
+            if auth_cookie != "true":
+                # Return 401 immediately
+                print(f"[HttpAdapter] Access denied - auth cookie: '{auth_cookie}'")
+                response = self.build_error_response(401, "Unauthorized")
+                conn.sendall(response)
+                conn.close()
+                return
+
         # Handle request hook
         if req.hook:
             print("[HttpAdapter] hook in route-path METHOD {} PATH {}".format(req.hook._route_path,req.hook._route_methods))

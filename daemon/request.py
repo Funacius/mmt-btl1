@@ -99,7 +99,23 @@ class Request():
             raw_header, raw_body = request.split("\r\n\r\n", 1)
         else:
             raw_header, raw_body = request, ""
+            
+        self.headers = self.prepare_headers(raw_header)
+        # Parse cookies with error handling
+        raw_cookie = self.headers.get("cookie", "")
+        self.cookies = CaseInsensitiveDict()
 
+        try:
+            if raw_cookie:
+                cookie_pairs = raw_cookie.split(";")
+                for pair in cookie_pairs:
+                    if "=" in pair:
+                        k, v = pair.strip().split("=", 1)
+                        self.cookies[k] = v
+                print(f"[Request] Parsed cookies: {dict(self.cookies)}")
+        except Exception as e:
+            print(f"[Request] Error parsing cookie: {e}")
+            self.cookies = CaseInsensitiveDict()
         # Prepare the request line from the request header
 
         #
@@ -108,7 +124,6 @@ class Request():
         #
         # TODO manage the webapp hook in this mounting point
         #
-        
         if not routes == {}:
             self.routes = routes
             self.hook = routes.get((self.method, self.path))

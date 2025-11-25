@@ -296,8 +296,12 @@ class Response():
         #
 	# self.auth = ...
         if hasattr(self, "cookies") and self.cookies:
-            cookie_str = "; ".join([f"{k}={v}" for k, v in self.cookies.items()])
-            headers["Set-Cookie"] = cookie_str
+            cookie_parts = []
+            for k, v in self.cookies.items():
+                cookie_parts.append("{}={}; Path=/; HttpOnly; Max-Age=3600".format(k, v))
+            
+            if cookie_parts:
+                headers["Set-Cookie"] = cookie_parts[0]
 
         header_lines = [f"HTTP/1.1 {status_code} {reason}"]
         for key, value in headers.items():
@@ -316,7 +320,7 @@ class Response():
 
         :rtype bytes: Encoded 404 response.
         """
-
+    
         return (
                 "HTTP/1.1 404 Not Found\r\n"
                 "Accept-Ranges: bytes\r\n"
@@ -372,3 +376,4 @@ class Response():
         self._header = self.build_response_header(request)
 
         return self._header + self._content
+    
