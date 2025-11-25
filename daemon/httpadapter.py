@@ -23,6 +23,8 @@ Request and Response objects to handle client-server communication.
 from .request import Request
 from .response import Response
 from .dictionary import CaseInsensitiveDict
+import os
+from .response import BASE_DIR
 
 class HttpAdapter:
     """
@@ -105,6 +107,13 @@ class HttpAdapter:
         # Handle the request
         msg = conn.recv(1024).decode()
         req.prepare(msg, routes)
+
+        if req.method == "POST" and req.path == "/login":
+            print("[HttpAdapter] Handling /login")
+            response = self.login_handler(req, resp)
+            conn.sendall(response)
+            conn.close()
+            return
 
         # Handle request hook
         if req.hook:
@@ -229,3 +238,69 @@ class HttpAdapter:
             headers["Proxy-Authorization"] = (username, password)
 
         return headers
+    
+    def login_handler(self, req, resp):
+        """
+        Handle POST /login authentication.
+        """
+
+        body = req.body.strip()
+        print("[Login] raw body =", body)
+
+        parts = body.split("&")
+        data = {}
+        for p in parts:
+            if "=" in p:
+                k, v = p.split("=", 1)
+                data[k] = v
+
+        username = data.get("username", "")
+        password = data.get("password", "")
+
+        print(f"[Login] username={username} password={password}")
+
+        if username == "admin" and password == "password":
+            resp.cookies["auth"] = "true"
+
+            req.path = "/index.html"
+            return resp.build_response(req)
+
+        resp.status_code = 401
+        resp.reason = "Unauthorized"
+
+        body = b"401 Unauthorized"
+
+        
+
+        return self.build_error_response(resp.status_code, resp.reason)
+    
+    def build_error_response(self, status_code, message=""):
+        """Return an HTML error page using template files."""
+        
+        error_files = {
+            401: "401.html",
+            404: "404.html",
+        }
+
+        filename = error_files.get(status_code, None)
+
+        if filename:
+            error_path = os.path.join(BASE_DIR + "www/", filename)
+
+            if os.path.exists(error_path):
+                with open(error_path, "rb") as f:
+                    body = f.read()
+            else:
+                body = f"<h1>{status_code} {message}</h1>".encode()
+        else:
+            body = f"<h1>{status_code} {message}</h1>".encode()
+
+        header = (
+            f"HTTP/1.1 {status_code} {message}\r\n"
+            f"Content-Type: text/html\r\n"
+            f"Content-Length: {len(body)}\r\n"
+            "Connection: close\r\n\r\n"
+        ).encode()
+
+        return header + body
+

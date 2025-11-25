@@ -146,7 +146,24 @@ class Response():
 
         :raises ValueError: If the MIME type is unsupported.
         """
-        
+        def handle_text_other(sub_type):
+            base_dir = BASE_DIR + "static/"
+
+            mapping = {
+                "csv": "text/csv",
+                "xml": "text/xml",
+                "javascript": "text/javascript",
+                "js": "text/javascript",
+                "markdown": "text/markdown",
+                "md": "text/markdown",
+            }
+
+            if sub_type in mapping:
+                self.headers["Content-Type"] = mapping[sub_type]
+            else:
+                self.headers["Content-Type"] = "text/plain"
+
+            return base_dir
         base_dir = ""
 
         # Processing mime_type based on main_type and sub_type
@@ -163,9 +180,29 @@ class Response():
         elif main_type == 'image':
             base_dir = BASE_DIR+"static/"
             self.headers['Content-Type']='image/{}'.format(sub_type)
-        elif main_type == 'application':
-            base_dir = BASE_DIR+"apps/"
-            self.headers['Content-Type']='application/{}'.format(sub_type)
+        elif main_type == "application":
+            mapping = {
+                "json": "application/json",
+                "xml": "application/xml",
+                "zip": "application/zip",
+                "pdf": "application/pdf",
+                "octet-stream": "application/octet-stream",
+            }
+
+            self.headers["Content-Type"] = mapping.get(sub_type, f"application/{sub_type}")
+            base_dir = BASE_DIR + "apps/"
+
+        elif main_type == "video":
+            self.headers["Content-Type"] = f"video/{sub_type}"
+            base_dir = BASE_DIR + "static/"
+
+        elif main_type == "audio":
+            self.headers["Content-Type"] = f"audio/{sub_type}"
+            base_dir = BASE_DIR + "static/"
+
+        elif main_type == "font":
+            self.headers["Content-Type"] = f"font/{sub_type}"
+            base_dir = BASE_DIR + "static/"
         #
         #  TODO: process other mime_type
         #        application/xml       
@@ -201,6 +238,15 @@ class Response():
             #  TODO: implement the step of fetch the object file
             #        store in the return value of content
             #
+        if not os.path.exists(filepath):
+            print("[Response] File not found:", filepath)
+            return 0, b""            
+        try:
+            with open(filepath, "rb") as f:
+                content = f.read()
+        except Exception as e:
+            print("[Response] Error reading file:", e)
+            return 0, b""
         return len(content), content
 
 
@@ -215,6 +261,9 @@ class Response():
         """
         reqhdr = request.headers
         rsphdr = self.headers
+
+        status_code = self.status_code if self.status_code else 200
+        reason = self.reason if self.reason else "OK"
 
         #Build dynamic headers
         headers = {
@@ -246,6 +295,18 @@ class Response():
         # TODO prepare the request authentication
         #
 	# self.auth = ...
+        if hasattr(self, "cookies") and self.cookies:
+            cookie_str = "; ".join([f"{k}={v}" for k, v in self.cookies.items()])
+            headers["Set-Cookie"] = cookie_str
+
+        header_lines = [f"HTTP/1.1 {status_code} {reason}"]
+        for key, value in headers.items():
+            header_lines.append(f"{key}: {value}")
+
+        header_text = "\r\n".join(header_lines) + "\r\n\r\n"
+
+        fmt_header = header_text
+
         return str(fmt_header).encode('utf-8')
 
 
@@ -285,17 +346,29 @@ class Response():
         base_dir = ""
 
         #If HTML, parse and serve embedded objects
-        if path.endswith('.html') or mime_type == 'text/html':
-            base_dir = self.prepare_content_type(mime_type = 'text/html')
-        elif mime_type == 'text/css':
-            base_dir = self.prepare_content_type(mime_type = 'text/css')
+        # if path.endswith('.html') or mime_type == 'text/html':
+        #     base_dir = self.prepare_content_type(mime_type = 'text/html')
+        # elif mime_type == 'text/css':
+        #     base_dir = self.prepare_content_type(mime_type = 'text/css')
         #
         # TODO: add support objects
         #
-        else:
+        # else:
+        #     return self.build_notfound()
+
+        try:
+            base_dir = self.prepare_content_type(mime_type)
+        except Exception:
+            return self.build_notfound()
+        
+        c_len, content = self.build_content(path, base_dir)
+        if c_len == 0 and content == b"":
             return self.build_notfound()
 
-        c_len, self._content = self.build_content(path, base_dir)
+        self._content = content
+
+        self.status_code = 200
+        self.reason = "OK"
         self._header = self.build_response_header(request)
 
         return self._header + self._content

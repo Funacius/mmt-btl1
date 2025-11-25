@@ -18,6 +18,7 @@ This module provides a Request object to manage and persist
 request settings (cookies, auth, proxies).
 """
 from .dictionary import CaseInsensitiveDict
+import base64
 
 class Request():
     """The fully mutable "class" `Request <Request>` object,
@@ -91,10 +92,15 @@ class Request():
 
     def prepare(self, request, routes=None):
         """Prepares the entire request with the given parameters."""
-
-        # Prepare the request line from the request header
+        
         self.method, self.path, self.version = self.extract_request_line(request)
         print("[Request] {} path {} version {}".format(self.method, self.path, self.version))
+        if "\r\n\r\n" in request:
+            raw_header, raw_body = request.split("\r\n\r\n", 1)
+        else:
+            raw_header, raw_body = request, ""
+
+        # Prepare the request line from the request header
 
         #
         # @bksysnet Preapring the webapp hook with WeApRous instance
@@ -111,17 +117,36 @@ class Request():
             # ...
             #
 
-        self.headers = self.prepare_headers(request)
-        cookies = self.headers.get('cookie', '')
+        self.headers = self.prepare_headers(raw_header)
+        raw_cookie = self.headers.get("cookie", "")
+        self.cookies = CaseInsensitiveDict()
+
+        if raw_cookie:
+            cookie_pairs = raw_cookie.split(";")
+            for pair in cookie_pairs:
+                if "=" in pair:
+                    k, v = pair.strip().split("=", 1)
+                    self.cookies[k] = v
             #
             #  TODO: implement the cookie function here
             #        by parsing the header            #
+        if self.method == "POST":
+            self.body = raw_body
+        else:
+            self.body = ""
 
         return
 
     def prepare_body(self, data, files, json=None):
-        self.prepare_content_length(self.body)
+        if json is not None:
+            import json as json_lib
+            body = json_lib.dumps(json)
+        elif data is not None:
+            body = data
+        else:
+            body = ""
         self.body = body
+        self.prepare_content_length(self.body)
         #
         # TODO prepare the request authentication
         #
@@ -130,7 +155,12 @@ class Request():
 
 
     def prepare_content_length(self, body):
-        self.headers["Content-Length"] = "0"
+        if body is None:
+            length = "0"
+        else:
+            length = str(len(body.encode("utf-8")))
+
+        self.headers["Content-Length"] = length
         #
         # TODO prepare the request authentication
         #
@@ -143,7 +173,16 @@ class Request():
         # TODO prepare the request authentication
         #
 	# self.auth = ...
+        if auth is None:
+                return
+
+        username, password = auth
+        token = f"{username}:{password}"
+        base64_token = base64.b64encode(token.encode()).decode()
+
+        self.headers["authorization"] = f"Basic {base64_token}"
         return
 
     def prepare_cookies(self, cookies):
-            self.headers["Cookie"] = cookies
+        cookie_str = "; ".join([f"{k}={v}" for k, v in cookies.items()])
+        self.headers["Cookie"] = cookie_str
