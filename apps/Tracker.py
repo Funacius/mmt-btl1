@@ -34,7 +34,7 @@ class TrackerState(object):
             channels = []
 
         # đảm bảo channels là list
-        if isinstance(channels, basestring):
+        if isinstance(channels, str):
             channels = [channels]
 
         self.peers[peer_id] = {
@@ -60,7 +60,7 @@ class TrackerState(object):
         if port is not None:
             peer["port"] = port
         if channels is not None:
-            if isinstance(channels, basestring):
+            if isinstance(channels, str):
                 channels = [channels]
             peer["channels"] = channels
 

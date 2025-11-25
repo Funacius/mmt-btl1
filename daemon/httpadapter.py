@@ -25,6 +25,7 @@ from .response import Response
 from .dictionary import CaseInsensitiveDict
 import os
 from .response import BASE_DIR
+import json
 
 class HttpAdapter:
     """
@@ -122,6 +123,30 @@ class HttpAdapter:
             #
             # TODO: handle for App hook here
             #
+            result = req.hook(headers=req.headers, body=req.body or "")
+
+            # chuẩn hoá response body
+            if isinstance(result, (dict, list)):
+                body_bytes = json.dumps(result).encode("utf-8")
+                content_type = "application/json"
+            elif isinstance(result, bytes):
+                body_bytes = result
+                content_type = "application/json"
+            else:  # string
+                body_bytes = str(result).encode("utf-8")
+                content_type = "application/json"
+
+            # Tự build header HTTP 200 OK
+            header = (
+                "HTTP/1.1 200 OK\r\n"
+                f"Content-Type: {content_type}\r\n"
+                f"Content-Length: {len(body_bytes)}\r\n"
+                "Connection: close\r\n\r\n"
+            ).encode("utf-8")
+
+            conn.sendall(header + body_bytes)
+            conn.close()
+            return
 
         # Build response
         response = resp.build_response(req)

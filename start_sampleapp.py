@@ -32,7 +32,10 @@ from apps.Tracker import TrackerState
 tracker = TrackerState()
 
 from daemon.weaprous import WeApRous
+from apps.P2P import Peer
 
+peer_instance = Peer(port=9005)   # ví dụ – port này nên dynamic theo máy bạn
+peer_instance.start_server()
 PORT = 8000  # Default port
 
 app = WeApRous()
@@ -91,6 +94,51 @@ def submit_info(headers="guest", body="{}"):
     except Exception as e:
         return json.dumps({"status": "ERROR", "message": str(e)})
 
+@app.route('/connect-peer', methods=['POST'])
+def connect_peer(headers="guest", body="{}"):
+    try:
+        data = json.loads(body)
+        host = data.get("host")
+        port = data.get("port")
+
+        if not host or not port:
+            return json.dumps({"status": "ERROR", "message": "host/port required"})
+
+        peer_instance.connect_to_peer(host, int(port))
+        return json.dumps({"status": "OK", "message": "Connected"})
+
+    except Exception as e:
+        return json.dumps({"status": "ERROR", "message": str(e)})
+    
+@app.route('/broadcast-peer', methods=['POST'])
+def broadcast_peer(headers="guest", body="{}"):
+    try:
+        data = json.loads(body)
+        channel = data.get("channel", "general")
+        text = data.get("text", "")
+
+        peer_instance.broadcast(channel, text)
+        return json.dumps({"status": "OK"})
+
+    except Exception as e:
+        return json.dumps({"status": "ERROR", "message": str(e)})
+
+@app.route('/send-peer', methods=['POST'])
+def send_peer(headers="guest", body="{}"):
+    try:
+        data = json.loads(body)
+        peer_id = data.get("peer_id")
+        text = data.get("text", "")
+        channel = data.get("channel", "general")
+
+        if not peer_id:
+            return json.dumps({"status": "ERROR", "message": "peer_id required"})
+
+        peer_instance.send_to_peer(peer_id, text, channel)
+        return json.dumps({"status": "OK"})
+
+    except Exception as e:
+        return json.dumps({"status": "ERROR", "message": str(e)})
 
 @app.route('/get-list', methods=['POST', 'GET'])
 def get_list(headers="guest", body="{}"):
@@ -127,6 +175,53 @@ def hello(headers, body):
     """
     print("[SampleApp] ['PUT'] Hello in {} to {}".format(headers, body))
 
+@app.route('/add-list', methods=['POST'])
+def add_list(headers="guest", body="{}"):
+    """
+    API example: http://IP:port/add-list/
+
+    Ý tưởng:
+    - Client gửi lên peer_id + channel mới muốn join.
+    - Server thêm channel đó vào list channels của peer trong TrackerState.
+    """
+    try:
+        data = json.loads(body)
+
+        peer_id = data.get("peer_id")
+        new_channel = data.get("channel")
+
+        if not peer_id or not new_channel:
+            return json.dumps({
+                "status": "ERROR",
+                "message": "peer_id and channel required"
+            })
+
+        # Lấy peer hiện tại từ tracker
+        peers = tracker.get_peers()              # list of dict
+        found = None
+        for p in peers:
+            if p.get("peer_id") == peer_id:
+                found = p
+                break
+
+        if not found:
+            return json.dumps({
+                "status": "ERROR",
+                "message": "peer_id not registered"
+            })
+
+        channels = found.get("channels", [])
+        if new_channel not in channels:
+            channels.append(new_channel)
+
+        # Cập nhật lại tracker
+        tracker.update_peer(peer_id, channels=channels)
+
+        print("[Tracker] Add channel:", peer_id, channels)
+        return json.dumps({"status": "OK", "channels": channels})
+
+    except Exception as e:
+        return json.dumps({"status": "ERROR", "message": str(e)})
 
 if __name__ == "__main__":
     # Parse command-line arguments to configure server IP and port
