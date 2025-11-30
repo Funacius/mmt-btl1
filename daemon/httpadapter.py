@@ -104,11 +104,13 @@ class HttpAdapter:
         req = self.request
         # Response handler
         resp = self.response
+        print(self.routes)
 
         # Handle the request
         msg = conn.recv(1024).decode()
         req.prepare(msg, routes)
-
+        if req.method == "POST":
+            print("Body:", req.path)
         if req.method == "POST" and req.path == "/login":
             print("[HttpAdapter] Handling /login")
             response = self.login_handler(req, resp)
@@ -128,6 +130,7 @@ class HttpAdapter:
                 return
 
         # Handle request hook
+        print(req.hook)
         if req.hook:
             print("[HttpAdapter] hook in route-path METHOD {} PATH {}".format(req.hook._route_path,req.hook._route_methods))
             req.hook(headers = "bksysnet",body = "get in touch")

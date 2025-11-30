@@ -5,7 +5,7 @@ from collections import defaultdict
 import uuid
 import time
 
-HOST = "0.0.0.0"
+HOST = "192.168.1.3"
 
 class Peer:
     def __init__(self, port):

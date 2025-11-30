@@ -71,7 +71,19 @@ def login(headers="guest", body="anonymous"):
     except Exception as e:
         return json.dumps({"status": "ERROR", "message": str(e)})
 
-
+@app.route('/leave', methods=['POST'])
+def leave(headers=None, body=None):
+    try:
+        data = json.loads(body or "{}")
+        peer_id = data.get("peer_id")
+        if peer_id:
+            tracker.remove_peer(peer_id)
+            print(f"[Tracker] Peer {peer_id} has left the network")
+        return json.dumps({"status": "OK", "message": "Peer removed"})
+    except Exception as e:
+        print(f"[Tracker] Error removing peer: {e}")
+        return json.dumps({"status": "ERROR", "message": str(e)})
+    
 @app.route('/submit-info', methods=['POST'])
 def submit_info(headers="guest", body="{}"):
     try:
@@ -89,6 +101,7 @@ def submit_info(headers="guest", body="{}"):
         )
 
         print("[Tracker] Updated:", peer_id, data)
+        print(tracker.get_peers())
         return json.dumps({"status": "UPDATED"})
 
     except Exception as e:

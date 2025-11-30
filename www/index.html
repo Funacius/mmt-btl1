@@ -1,21 +1,46 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>bksysnet@hcmut welcome</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BK Chat – bksysnet@hcmut.edu.vn</title>
 
-    <meta charset="utf-8" />
-    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <script src="/socket.io/socket.io.js"></script>
 </head>
-
 <body>
-<div>
-    <h1>bksysnet@hcmut  Domain</h1>
-    <p>This domain is for use in illustrative examples in documents.
-    </p>
-  
-       <img src="images/welcome.png" alt="bksysnet at HCMUT" width="500" height="600">  
-</div>
+  <div class="container">
+    <!-- Sidebar: Danh sách channel + nhập tên -->
+    <div id="sidebar">
+      <h2>Channels</h2>
+      <ul id="channel-list"></ul>
+
+      <input type="text" id="username" placeholder="Your name" required />
+    </div>
+
+    <!-- Khu vực chat chính -->
+    <div id="chat-area">
+      <!-- Header có dropdown chọn channel -->
+      <div id="channel-header">
+        <div class="header-content">
+          <span id="current-channel-name">Select a channel</span>
+          <select id="channel-select">
+            <option value="">– Choose a channel –</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tin nhắn -->
+      <div id="messages"></div>
+
+      <!-- Ô nhập tin nhắn -->
+      <div id="input-area">
+        <input type="text" id="message-input" placeholder="Type a message..." disabled />
+        <button id="send-btn" disabled>Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/script.js"></script>
 </body>
 </html>

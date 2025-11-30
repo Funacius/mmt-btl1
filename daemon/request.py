@@ -72,7 +72,7 @@ class Request():
             lines = request.splitlines()
             first_line = lines[0]
             method, path, version = first_line.split()
-
+            path = path.strip().rstrip('\r\n')
             if path == '/':
                 path = '/index.html'
         except Exception:
@@ -94,6 +94,8 @@ class Request():
         """Prepares the entire request with the given parameters."""
         
         self.method, self.path, self.version = self.extract_request_line(request)
+        if self.method:
+            self.method = self.method.upper()
         print("[Request] {} path {} version {}".format(self.method, self.path, self.version))
         if "\r\n\r\n" in request:
             raw_header, raw_body = request.split("\r\n\r\n", 1)
@@ -116,6 +118,9 @@ class Request():
         except Exception as e:
             print(f"[Request] Error parsing cookie: {e}")
             self.cookies = CaseInsensitiveDict()
+        if routes:
+            lookup_key = (self.method, self.path)
+            self.hook = routes.get(lookup_key)
         # Prepare the request line from the request header
 
         #
@@ -124,24 +129,24 @@ class Request():
         #
         # TODO manage the webapp hook in this mounting point
         #
-        if not routes == {}:
-            self.routes = routes
-            self.hook = routes.get((self.method, self.path))
-            #
-            # self.hook manipulation goes here
-            # ...
-            #
+        # if not routes == {}:
+        #     self.routes = routes
+        #     self.hook = routes.get((self.method, self.path))
+        #     #
+        #     # self.hook manipulation goes here
+        #     # ...
+        #     #
 
-        self.headers = self.prepare_headers(raw_header)
-        raw_cookie = self.headers.get("cookie", "")
-        self.cookies = CaseInsensitiveDict()
+        # self.headers = self.prepare_headers(raw_header)
+        # raw_cookie = self.headers.get("cookie", "")
+        # self.cookies = CaseInsensitiveDict()
 
-        if raw_cookie:
-            cookie_pairs = raw_cookie.split(";")
-            for pair in cookie_pairs:
-                if "=" in pair:
-                    k, v = pair.strip().split("=", 1)
-                    self.cookies[k] = v
+        # if raw_cookie:
+        #     cookie_pairs = raw_cookie.split(";")
+        #     for pair in cookie_pairs:
+        #         if "=" in pair:
+        #             k, v = pair.strip().split("=", 1)
+        #             self.cookies[k] = v
             #
             #  TODO: implement the cookie function here
             #        by parsing the header            #
@@ -149,7 +154,7 @@ class Request():
             self.body = raw_body
         else:
             self.body = ""
-
+        
         return
 
     def prepare_body(self, data, files, json=None):
