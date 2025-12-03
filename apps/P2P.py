@@ -4,8 +4,10 @@ import json
 from collections import defaultdict
 import uuid
 import time
+import argparse
 
 HOST = "192.168.1.3"
+PORT = 9000
 
 class Peer:
     def __init__(self, port):
@@ -166,6 +168,9 @@ class Peer:
                 print("Unknown command")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog='Backend', description='', epilog='Beckend daemon')
+    parser.add_argument('--server-ip', default='0.0.0.0')
+    parser.add_argument('--server-port', type=int, default=PORT)
     port = int(input("Enter port for this peer: "))
     peer = Peer(port)
     peer.start_server()
